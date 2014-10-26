@@ -62,7 +62,7 @@ import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Match (tagOpen)
 import qualified Data.Set as Set
 import Text.Printf (printf)
-import Debug.Trace (trace)
+import Debug.Trace (trace, traceM)
 
 type MarkdownParser = Parser [Char] ParserState
 
@@ -333,9 +333,24 @@ parseMarkdown = do
   optional titleBlock
   blocks <- parseBlocks
   st <- getState
+  checkAllNotesReached
   let meta = runF (stateMeta' st) st
   let Pandoc _ bs = B.doc $ runF blocks st
   return $ Pandoc meta bs
+
+-- Checks all footnote references against notes, warning if
+-- any notes are unreachable.
+checkAllNotesReached :: MarkdownParser ()
+checkAllNotesReached = do
+  st <- getState
+  let refs = stateNoteRefs st
+      notes = stateNotes' st
+      refSet = foldl (flip Set.insert) Set.empty (map fst notes)
+      diff = Set.difference refSet refs
+      errM s = "Unused footnote `" ++ s ++ "'"
+  when (diff /= Set.empty) $
+    mapM_ (\r -> addWarning Nothing $ errM r) (Set.toList diff)
+  return ()
 
 addWarning :: Maybe SourcePos -> String -> MarkdownParser ()
 addWarning mbpos msg =
@@ -1745,6 +1760,8 @@ note :: MarkdownParser (F Inlines)
 note = try $ do
   guardEnabled Ext_footnotes
   ref <- noteMarker
+  snr <- stateNoteRefs <$> getState
+  updateState $ \st -> st{ stateNoteRefs = Set.insert ref snr }
   return $ do
     notes <- asksF stateNotes'
     case lookup ref notes of

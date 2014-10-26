@@ -900,6 +900,7 @@ data ParserState = ParserState
       stateSubstitutions   :: SubstTable,    -- ^ List of substitution references
       stateNotes           :: NoteTable,     -- ^ List of notes (raw bodies)
       stateNotes'          :: NoteTable',    -- ^ List of notes (parsed bodies)
+      stateNoteRefs        :: Set.Set String,
       stateMeta            :: Meta,          -- ^ Document metadata
       stateMeta'           :: F Meta,        -- ^ Document metadata
       stateHeaderTable     :: [HeaderType],  -- ^ Ordered list of header types used
@@ -998,6 +999,7 @@ defaultParserState =
                   stateSubstitutions   = M.empty,
                   stateNotes           = [],
                   stateNotes'          = [],
+                  stateNoteRefs        = Set.empty,
                   stateMeta            = nullMeta,
                   stateMeta'           = return nullMeta,
                   stateHeaderTable     = [],
